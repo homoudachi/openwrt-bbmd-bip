@@ -1,0 +1,127 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=80
+STOP=80
+
+start_service() {
+    local cfg="$1"
+    local device_instance device_name vendor_id model_name firmware_rev
+    local network_number
+    local hub_enabled hub_port hub_tls_cert hub_tls_key hub_ca_cert
+    local hub_max_nodes hub_keepalive_interval hub_keepalive_timeout
+    local node_enabled node_primary_hub node_tls_cert node_tls_key node_ca_cert
+    local node_retry_interval node_max_retry_interval
+    local telemetry_enabled telemetry_cpu telemetry_memory telemetry_network telemetry_uptime
+    local bbmd_enabled bbmd_port bbmd_lan_interface
+    local log_level
+
+    config_load bbmd
+
+    config_get device_instance globals device_instance 4194303
+    config_get device_name globals device_name 'OpenWrt Router'
+    config_get vendor_id globals vendor_id 0
+    config_get model_name globals model_name 'OpenWrt BBMD'
+    config_get firmware_rev globals firmware_rev '1.0.0'
+    config_get network_number globals network_number 1
+
+    config_get_bool hub_enabled hub enabled 0
+    config_get hub_port hub port 443
+    config_get hub_tls_cert hub tls_cert '/etc/bbmd/certs/hub-cert.pem'
+    config_get hub_tls_key hub tls_key '/etc/bbmd/certs/hub-key.pem'
+    config_get hub_ca_cert hub ca_cert '/etc/bbmd/certs/ca-cert.pem'
+    config_get hub_max_nodes hub max_nodes 50
+    config_get hub_keepalive_interval hub keepalive_interval 30
+    config_get hub_keepalive_timeout hub keepalive_timeout 90
+
+    config_get_bool node_enabled node enabled 0
+    config_get node_primary_hub node primary_hub ''
+    config_get node_tls_cert node tls_cert '/etc/bbmd/certs/node-cert.pem'
+    config_get node_tls_key node tls_key '/etc/bbmd/certs/node-key.pem'
+    config_get node_ca_cert node ca_cert '/etc/bbmd/certs/ca-cert.pem'
+    config_get node_retry_interval node retry_interval 5
+    config_get node_max_retry_interval node max_retry_interval 60
+
+    config_get_bool telemetry_enabled telemetry enabled 0
+    config_get telemetry_cpu telemetry cpu_interval 10
+    config_get telemetry_memory telemetry memory_interval 10
+    config_get telemetry_network telemetry network_interval 30
+    config_get telemetry_uptime telemetry uptime_interval 60
+
+    config_get_bool bbmd_enabled bbmd enabled 0
+    config_get bbmd_port bbmd port 47808
+    config_get bbmd_lan_interface bbmd lan_interface 'br-lan'
+
+    config_get log_level logging level 'info'
+
+    procd_open_instance
+    procd_set_param command /usr/sbin/bbmd
+
+    procd_append_param command -d "$device_instance"
+    procd_append_param command -n "$device_name"
+    procd_append_param command -V "$vendor_id"
+    procd_append_param command -m "$model_name"
+    procd_append_param command -f "$firmware_rev"
+    procd_append_param command --net "$network_number"
+    procd_append_param command --log-level "$log_level"
+
+    [ "$hub_enabled" = 1 ] && {
+        procd_append_param command --hub
+        procd_append_param command --hub-port "$hub_port"
+        procd_append_param command --hub-cert "$hub_tls_cert"
+        procd_append_param command --hub-key "$hub_tls_key"
+        procd_append_param command --hub-ca "$hub_ca_cert"
+        procd_append_param command --hub-max-nodes "$hub_max_nodes"
+        procd_append_param command --hub-keepalive-interval "$hub_keepalive_interval"
+        procd_append_param command --hub-keepalive-timeout "$hub_keepalive_timeout"
+    }
+
+    [ "$node_enabled" = 1 ] && {
+        procd_append_param command --node
+        procd_append_param command --node-primary "$node_primary_hub"
+        procd_append_param command --node-cert "$node_tls_cert"
+        procd_append_param command --node-key "$node_tls_key"
+        procd_append_param command --node-ca "$node_ca_cert"
+        procd_append_param command --node-retry "$node_retry_interval"
+        procd_append_param command --node-max-retry "$node_max_retry_interval"
+
+        config_list_foreach node failover_hub append_failover_hub
+    }
+
+    [ "$telemetry_enabled" = 1 ] && {
+        procd_append_param command --telemetry
+        procd_append_param command --telemetry-cpu "$telemetry_cpu"
+        procd_append_param command --telemetry-memory "$telemetry_memory"
+        procd_append_param command --telemetry-network "$telemetry_network"
+        procd_append_param command --telemetry-uptime "$telemetry_uptime"
+    }
+
+    [ "$bbmd_enabled" = 1 ] && {
+        procd_append_param command --bbmd
+        procd_append_param command --bbmd-port "$bbmd_port"
+        procd_append_param command --bbmd-iface "$bbmd_lan_interface"
+    }
+
+    procd_set_param respawn 3600 5 5
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+}
+
+append_failover_hub() {
+    procd_append_param command --node-failover "$1"
+}
+
+stop_service() {
+    local pid
+    pid=$(pidof bbmd 2>/dev/null)
+    [ -n "$pid" ] && kill "$pid" 2>/dev/null
+}
+
+reload_service() {
+    procd_send_signal bbmd
+}
+
+service_triggers() {
+    procd_add_reload_trigger "bbmd"
+}

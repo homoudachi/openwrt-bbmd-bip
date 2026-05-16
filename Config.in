@@ -1,0 +1,11 @@
+choice
+	prompt "TLS backend"
+	depends on PACKAGE_bbmd
+	default BBMD_USE_OPENSSL
+
+	config BBMD_USE_OPENSSL
+		bool "OpenSSL"
+
+	config BBMD_USE_MBEDTLS
+		bool "mbedTLS"
+endchoice
