@@ -12,7 +12,7 @@ Phase 6 complete — Certificate management with generation script, openssl-util
 
 Phase 7 complete — LuCI web UI (status dashboard + config form, menu, ACL, uci-defaults).
 
-Phase 8 in progress — README, install guide, config guide created. Binary profiling done. Hardware-dependent tasks (8.1 stress test, 8.3 physical install) blocked.
+Phase 8 complete (non-blocked tasks) — v1.0.0 tagged. Portability fixes (-c flag, BACNET_FILE_PATH_RESTRICTED=0). Remaining blockers: stress test, physical install, openwrt/packages PR.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 

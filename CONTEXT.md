@@ -9,7 +9,7 @@ OpenWrt binary package (`bbmd`) that transforms a Wi-Fi router into a BACnet/SC 
 
 ## Current Phase
 
-**Phase 8 in progress** — Testing, documentation, and release preparation. Documentation (README, install guide, config guide) complete. Binary profiling done. Hardware-dependent tasks (stress test, physical install) blocked.
+**Phase 8 complete** — All non-blocked tasks finished. v1.0.0 tagged. Remaining blockers: stress test (8.1), physical router install (8.3), openwrt/packages PR (8.6).
 
 ## Key Files
 
@@ -54,3 +54,9 @@ All handlers registered in `bbmd_hub.c` and `bbmd_node.c` (independent duplicati
 - Hub and node mode cannot run simultaneously (BSC datalink is singleton).
 - Bridge mode is exclusive with hub mode and node mode.
 - Bridge mode can coexist with telemetry mode.
+
+## Portability
+
+- `-c, --config DIR` — custom config directory (default: `/etc/config`). Sets `UCI_CONFDIR` before UCI context creation.
+- `BACNET_FILE_PATH_RESTRICTED=0` — allows absolute cert paths (bacnet-stack defaults to restricting these). Set as compile def in CMakeLists.txt.
+- `-f, --foreground` — run in foreground (skip daemonize).

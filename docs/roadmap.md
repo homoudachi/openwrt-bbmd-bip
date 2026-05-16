@@ -96,11 +96,11 @@
 
 | # | Task | Deliverable | Status |
 |---|---|---|---|
-| 8.1 | Stress test: 50 concurrent SC connections | Test script + results | 🔄 QEMU VM boots (confirmed), bbmd builds past mode check; blocked on sudo for image prep + cert path fix |
+| 8.1 | Stress test: 50 concurrent SC connections | Test script + results | ⏭️ Blocked — needs sudo for QEMU image prep; cert path fix (8.5) removes bacnet-stack barrier |
 | 8.2 | Binary size and memory profiling | Profiling report | ✅ 1.1MB stripped (x86_64), ~12.6MB runtime, NFR-1 over (<500KB target, MIPS build expected smaller) |
-| 8.3 | Install and test on physical router (e.g., GL.iNet) | Test report | 🔄 QEMU x86_64 VM boots; MIPS available (qemu-system-mips/mipsel/mips64); blocked on sudo for rootfs prep |
+| 8.3 | Install and test on physical router (e.g., GL.iNet) | Test report | ⏭️ Blocked — needs physical router |
 | 8.4 | README, install guide, configuration guide | `README.md`, `docs/` | ✅ README.md, docs/install-guide.md, docs/config-guide.md |
-| 8.5 | Tag v1.0.0 release | Git tag + GitHub release | ⬜ Requires commit + tag |
+| 8.5 | Tag v1.0.0 release | Git tag + GitHub release | ✅ v1.0.0 tagged (commit 9813642); includes -c flag fix, BACNET_FILE_PATH_RESTRICTED=0, MKP macro fix |
 | 8.6 | Submit to openwrt/packages feed | PR to openwrt/packages | ⏭️ Blocked — needs external PR approval |
 
 ---
@@ -120,7 +120,7 @@
 
 ---
 
-## Current State — File Map (post-Phase 7)
+## Current State — File Map (post-Phase 8)
 
 | File | Purpose |
 |---|---|
