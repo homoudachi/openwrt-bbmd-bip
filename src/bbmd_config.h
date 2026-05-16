@@ -64,7 +64,7 @@ typedef struct {
     bbmd_logging_config_t logging;
 } bbmd_config_t;
 
-int bbmd_config_load(bbmd_config_t *config);
+int bbmd_config_load(bbmd_config_t *config, const char *confdir);
 void bbmd_config_free(bbmd_config_t *config);
 const char *bbmd_config_str(const bbmd_config_t *config);
 

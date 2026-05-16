@@ -39,7 +39,7 @@ static void defaults_init(bbmd_config_t *cfg)
     cfg->telemetry.network_interval = 30;
     cfg->telemetry.uptime_interval = 60;
 
-    cfg->bridge.enabled = true;
+    cfg->bridge.enabled = false;
     cfg->bridge.port = 47808;
     str_set(&cfg->bridge.lan_interface, "br-lan");
 
@@ -130,20 +130,22 @@ fail:
     return -1;
 }
 
-int bbmd_config_load(bbmd_config_t *config)
+int bbmd_config_load(bbmd_config_t *config, const char *confdir)
 {
     struct uci_context *ctx;
     char path[128];
 
     defaults_init(config);
 
+    if (confdir)
+        setenv("UCI_CONFDIR", confdir, 1);
+
     ctx = uci_alloc_context();
     if (!ctx)
         return 0;
 
 #define MKP(section, option) \
-    snprintf(path, sizeof(path), "%s.%s.%s", UCI_PKG, section, option); \
-    path
+    (snprintf(path, sizeof(path), "%s.%s.%s", UCI_PKG, section, option), path)
 
     read_u32(ctx, MKP("globals", "device_instance"),
              &config->globals.device_instance);

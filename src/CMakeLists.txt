@@ -37,7 +37,15 @@ set(INTRINSIC_REPORTING OFF CACHE BOOL "" FORCE)
 add_subdirectory(bacnet)
 
 target_include_directories(bacnet-stack PUBLIC ${LIBWEBSOCKETS_INCLUDE_DIRS})
-target_compile_definitions(bacnet-stack PRIVATE LWS_MAX_SMP=32)
+target_compile_definitions(bacnet-stack PRIVATE
+  LWS_MAX_SMP=32
+  BSC_CONF_SERVER_HUB_CONNECTIONS_MAX_NUM=50
+  SC_NETPORT_CONNECT_TIMEOUT=5
+  SC_NETPORT_HEARTBEAT_TIMEOUT=30
+  SC_NETPORT_DISCONNECT_TIMEOUT=90
+  SC_NETPORT_RECONNECT_TIME=60
+  BACNET_FILE_PATH_RESTRICTED=0
+)
 
 if(BBMD_TLS_BACKEND STREQUAL "mbedtls")
   target_compile_definitions(bacnet-stack PRIVATE CONFIG_MBEDTLS)

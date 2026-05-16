@@ -26,14 +26,6 @@ use_ecdsa() {
     openssl ecparam -name prime256v1 -genkey -noout 2>/dev/null
 }
 
-gen_key_params() {
-    if use_ecdsa; then
-        echo "ec -pkey-opts ec_paramgen_curve:prime256v1"
-    else
-        echo "rsa -pkey-opts rsa_keygen_bits:2048"
-    fi
-}
-
 ensure_dir() {
     mkdir -p "$BBMD_CERT_DIR"
     chmod 750 "$BBMD_CERT_DIR"

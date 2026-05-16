@@ -8,6 +8,12 @@ How the engineering skills should consume this repo's domain documentation when 
 - **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
 - **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
 
+Phase 6 complete — Certificate management with generation script, openssl-util dependency, and documentation. See CONTEXT.md for current file map, mode restrictions, and object list.
+
+Phase 7 complete — LuCI web UI (status dashboard + config form, menu, ACL, uci-defaults).
+
+Phase 8 in progress — README, install guide, config guide created. Binary profiling done. Hardware-dependent tasks (8.1 stress test, 8.3 physical install) blocked.
+
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
 ## File structure

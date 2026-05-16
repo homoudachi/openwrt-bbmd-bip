@@ -1,0 +1,17 @@
+{
+	"luci-app-bbmd": {
+		"description": "Grant access to BBMD configuration and status",
+		"read": {
+			"uci": [ "bbmd" ],
+			"file": {
+				"/proc/uptime": [ "read" ],
+				"/proc/meminfo": [ "read" ],
+				"/proc/stat": [ "read" ],
+				"/var/run/bbmd.pid": [ "read" ]
+			}
+		},
+		"write": {
+			"uci": [ "bbmd" ]
+		}
+	}
+}

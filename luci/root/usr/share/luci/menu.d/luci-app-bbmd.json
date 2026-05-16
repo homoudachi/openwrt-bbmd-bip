@@ -1,0 +1,28 @@
+{
+	"admin/services/bbmd": {
+		"title": "BBMD (BACnet)",
+		"order": 99,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-bbmd" ]
+		}
+	},
+	"admin/services/bbmd/status": {
+		"title": "Status",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "bbmd/status"
+		}
+	},
+	"admin/services/bbmd/config": {
+		"title": "Configuration",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "bbmd/config"
+		}
+	}
+}

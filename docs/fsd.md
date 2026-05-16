@@ -1,5 +1,7 @@
 # Functional Specification Document — OpenWrt BACnet/SC BBMD Node/Hub
 
+> **Implementation Status:** Phase 1 (Foundation) ✅ | Phase 2 (SC Hub) ✅ | Phase 3 (Telemetry) ✅ | Phase 4 (SC Node) ✅ | Phase 5 (BIP Bridge) ✅ | Phase 6 (Cert Mgmt) ✅ | Phase 7 (LuCI UI) ✅ | Phase 8 (Testing/Release) 🔄
+
 ## 1. Executive Summary
 
 **Product**: `bbmd` — An OpenWrt binary package (`.ipk`) that transforms a Wi-Fi router into a BACnet/SC (Secure Connect) hub/node for building automation networks.

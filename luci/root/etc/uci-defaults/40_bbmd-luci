@@ -1,0 +1,65 @@
+#!/bin/sh
+
+mkdir -p /etc/bbmd/certs
+
+uci -q get bbmd.globals > /dev/null || {
+    uci set bbmd.globals=globals
+    uci set bbmd.globals.device_instance='4194303'
+    uci set bbmd.globals.device_name='OpenWrt Router'
+    uci set bbmd.globals.vendor_id='0'
+    uci set bbmd.globals.model_name='OpenWrt BBMD'
+    uci set bbmd.globals.firmware_rev='1.0.0'
+    uci set bbmd.globals.network_number='1'
+    uci commit bbmd
+}
+
+uci -q get bbmd.hub > /dev/null || {
+    uci set bbmd.hub=hub
+    uci set bbmd.hub.enabled='1'
+    uci set bbmd.hub.port='443'
+    uci set bbmd.hub.tls_cert='/etc/bbmd/certs/hub-cert.pem'
+    uci set bbmd.hub.tls_key='/etc/bbmd/certs/hub-key.pem'
+    uci set bbmd.hub.ca_cert='/etc/bbmd/certs/ca-cert.pem'
+    uci set bbmd.hub.max_nodes='50'
+    uci set bbmd.hub.keepalive_interval='30'
+    uci set bbmd.hub.keepalive_timeout='90'
+    uci commit bbmd
+}
+
+uci -q get bbmd.node > /dev/null || {
+    uci set bbmd.node=node
+    uci set bbmd.node.enabled='0'
+    uci set bbmd.node.primary_hub='wss://hub.example.com/bacnet-sc'
+    uci set bbmd.node.tls_cert='/etc/bbmd/certs/node-cert.pem'
+    uci set bbmd.node.tls_key='/etc/bbmd/certs/node-key.pem'
+    uci set bbmd.node.ca_cert='/etc/bbmd/certs/ca-cert.pem'
+    uci set bbmd.node.retry_interval='5'
+    uci set bbmd.node.max_retry_interval='60'
+    uci commit bbmd
+}
+
+uci -q get bbmd.telemetry > /dev/null || {
+    uci set bbmd.telemetry=telemetry
+    uci set bbmd.telemetry.enabled='1'
+    uci set bbmd.telemetry.cpu_interval='10'
+    uci set bbmd.telemetry.memory_interval='10'
+    uci set bbmd.telemetry.network_interval='30'
+    uci set bbmd.telemetry.uptime_interval='60'
+    uci commit bbmd
+}
+
+uci -q get bbmd.bbmd > /dev/null || {
+    uci set bbmd.bbmd=bbmd
+    uci set bbmd.bbmd.enabled='1'
+    uci set bbmd.bbmd.port='47808'
+    uci set bbmd.bbmd.lan_interface='br-lan'
+    uci commit bbmd
+}
+
+uci -q get bbmd.logging > /dev/null || {
+    uci set bbmd.logging=logging
+    uci set bbmd.logging.level='info'
+    uci commit bbmd
+}
+
+exit 0

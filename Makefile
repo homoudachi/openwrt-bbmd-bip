@@ -29,7 +29,7 @@ endef
 define Package/bbmd-openssl
   $(call Package/bbmd/default)
   TITLE:=BACnet/SC BBMD daemon (OpenSSL)
-  DEPENDS:=+libubox +libblobmsg-json +libopenssl +libwebsockets-full
+  DEPENDS:=+libubox +libblobmsg-json +libopenssl +libwebsockets-full +openssl-util
   VARIANT:=openssl
   PROVIDES:=bbmd
   DEFAULT_VARIANT:=1
@@ -38,7 +38,7 @@ endef
 define Package/bbmd-mbedtls
   $(call Package/bbmd/default)
   TITLE:=BACnet/SC BBMD daemon (mbedTLS)
-  DEPENDS:=+libubox +libblobmsg-json +libmbedtls +libwebsockets-mbedtls
+  DEPENDS:=+libubox +libblobmsg-json +libmbedtls +libwebsockets-mbedtls +openssl-util
   VARIANT:=mbedtls
   PROVIDES:=bbmd
 endef
@@ -67,6 +67,8 @@ endef
 define Package/bbmd-openssl/install
   $(INSTALL_DIR) $(1)/usr/sbin
   $(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/bbmd $(1)/usr/sbin/
+  $(INSTALL_DIR) $(1)/usr/sbin
+  $(INSTALL_BIN) $(PKG_BUILD_DIR)/cert-gen.sh $(1)/usr/sbin/bbmd-cert-gen
   $(INSTALL_DIR) $(1)/etc/init.d
   $(INSTALL_BIN) $(PKG_BUILD_DIR)/bbmd.init $(1)/etc/init.d/bbmd
   $(INSTALL_DIR) $(1)/etc/config
@@ -76,6 +78,8 @@ endef
 define Package/bbmd-mbedtls/install
   $(INSTALL_DIR) $(1)/usr/sbin
   $(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/bbmd $(1)/usr/sbin/
+  $(INSTALL_DIR) $(1)/usr/sbin
+  $(INSTALL_BIN) $(PKG_BUILD_DIR)/cert-gen.sh $(1)/usr/sbin/bbmd-cert-gen
   $(INSTALL_DIR) $(1)/etc/init.d
   $(INSTALL_BIN) $(PKG_BUILD_DIR)/bbmd.init $(1)/etc/init.d/bbmd
   $(INSTALL_DIR) $(1)/etc/config
