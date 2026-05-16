@@ -2,6 +2,7 @@
 
 **Repo**: `homoudachi/openwrt-bbmd-bip` (`main` branch)
 **Working dir**: `/home/matt/opencode/openwrt-bbmd-bip`
+**Release**: https://github.com/homoudachi/openwrt-bbmd-bip/releases/tag/v1.0.0
 **Watch the issues**: `gh issue list --repo homoudachi/openwrt-bbmd-bip`
 
 ---
@@ -36,7 +37,7 @@ Also available: `triage`, `to-issues`, `diagnose`, `zoom-out`, `improve-codebase
 
 ---
 
-## Current State — ALL PHASES COMPLETE
+## Current State
 
 ### Phase 1-6: All complete (issues #1-#6 closed)
 See previous handover for details. Core: OpenWrt package skeleton, BACnet/SC Hub, telemetry, SC Node, BIP Bridge, cert management.
@@ -44,16 +45,22 @@ See previous handover for details. Core: OpenWrt package skeleton, BACnet/SC Hub
 ### Phase 7: LuCI Web UI (issue #7, closed)
 Status dashboard + config form + menu/ACL + UCI defaults.
 
-### Phase 8: Complete (issue #8, just closed)
+### Phase 8: Complete (issue #8, closed)
 
 | # | Task | Status |
 |---|---|---|
-| 8.1 | Stress test: 50 concurrent SC connections | ⏭️ Blocked — needs sudo (QEMU image prep). Cert path barrier removed by 8.5 fix. |
+| 8.1 | Stress test: 50 concurrent SC connections | ⏭️ **Unblocked** — passwordless sudo now available |
 | 8.2 | Binary size and memory profiling | ✅ 1.1MB stripped (x86_64), ~12.6MB runtime |
 | 8.3 | Install and test on physical router | ⏭️ Blocked — needs physical router |
 | 8.4 | README, install guide, configuration guide | ✅ |
 | 8.5 | Tag v1.0.0 release | ✅ v1.0.0 tagged (commit 9813642) |
 | 8.6 | Submit to openwrt/packages feed | ⏭️ Blocked — needs external PR |
+
+### Phase 9: Bugfix (issue #9, closed)
+
+| # | Task | Status |
+|---|---|---|
+| 9.1 | Fix duplicate config sections in LuCI form | ✅ Fixed in cf26303 — uci-defaults used `uci get bbmd.globals` (named section) instead of `uci get bbmd.@globals[0]` (type-indexed) |
 
 ### v1.0.0 Release (commit 9813642, tag v1.0.0)
 
@@ -63,29 +70,35 @@ Includes all Phase 1-7 work plus:
 - Bugfix: MKP macro comma operator wrapping
 - Bugfix: Bridge default changed from `true` to `false`
 
+### LuCI Testing VM
+
+QEMU VM running OpenWrt 25.12.4 x86_64 for LuCI testing:
+```bash
+# VM: PID in /tmp/bbmd-qemu/qemu3.log, boot log at /tmp/bbmd-qemu/boot3.log
+# Port forward: host:8729 → guest:80
+# Access: http://<host-ip>:8729/cgi-bin/luci (login: root, no password)
+# BBMD pages: /admin/services/bbmd/status and /admin/services/bbmd/config
+```
+
 ---
 
 ## Next Steps (in priority order)
 
-### Immediate: Push to GitHub + create release
+### Stress testing (8.1) — now unblocked
 
+Passwordless sudo is available. Steps:
 ```bash
-git push origin main
-git push origin v1.0.0
-gh release create v1.0.0 --title "v1.0.0 — Initial Production Release" --notes "See issue #8 for changelog."
+# 1. Build bbmd binary (native cmake with stubs)
+cmake -B build -S src -DBBMD_TLS_BACKEND=openssl && cmake --build build
+
+# 2. Install into QEMU rootfs
+sudo mount -o loop,offset=$((33792*512)) /tmp/bbmd-qemu/openwrt.img /tmp/bbmd-qemu/rootfs
+sudo cp build/bbmd /tmp/bbmd-qemu/rootfs/usr/bin/
+# Copy certs, write init script, etc.
+sudo umount /tmp/bbmd-qemu/rootfs
+
+# 3. Boot and run stress tests
 ```
-
-### Unblock stress testing (8.1)
-
-Only blocker is sudo for QEMU image prep. Once passwordless sudo is available:
-
-```bash
-# Path A: Enable passwordless sudo (fastest)
-# As root or existing sudoer, add to /etc/sudoers or /etc/sudoers.d/agent:
-matt ALL=(ALL) NOPASSWD: ALL
-```
-
-Then mount OpenWrt rootfs, install bbmd, create UCI config with certs, and run stress tests.
 
 ### openwrt/packages submission (8.6)
 
@@ -164,18 +177,19 @@ docs/fsd.md             ← Phase 8 status (from previous handover)
 ## Uncommitted Changes
 
 ```
- M src/CMakeLists.txt   ← Local build stubs only (not for commit)
+ M handover.md             ← Handover status updates (this edit)
+ M src/CMakeLists.txt      ← Local build stubs only (not for commit)
 ```
 
-No other uncommitted changes. All real work committed in 2 commits on `main`:
-- `9813642` — Phases 7-8: LuCI Web UI, documentation, and portability fixes
-- `ceeacc3` — Update docs for Phase 8 completion and v1.0.0 release
+Recent commits on `main` (not yet pushed):
+- `667c194` — docs: add port selection convention to AGENTS.md
+- `cf26303` — fix: use @type[0] syntax in uci-defaults to prevent duplicate config sections (#9)
 
 ---
 
 ## Remaining Issues
 
-All 8 issues closed. Next work should create new issues for:
-- Stress testing (requires sudo + QEMU image prep)
-- Physical router testing (requires hardware)
-- openwrt/packages feed submission (requires external PR)
+Issue #9 closed (duplicate config fix). Remaining work:
+- Stress testing (8.1) — now unblocked (sudo available)
+- Physical router testing (8.3) — needs hardware
+- openwrt/packages feed submission (8.6) — needs external PR
