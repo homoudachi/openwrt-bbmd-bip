@@ -45,4 +45,12 @@ make package/bbmd/compile V=s
 
 # Lint
 # TBD - install clang-tidy or cppcheck
+
+---
+
+## Conventions
+
+### Port selection
+
+Never use port 8080 (or 80, 443, 3000, 5000, 8000, 8443). Pick a random high port (1024–65535) not already in use. If unsure which port to use, ask the user.
 ```
