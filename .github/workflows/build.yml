@@ -1,0 +1,106 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  native-build-check:
+    name: Native build check
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        tls-backend: [openssl, mbedtls]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            gcc \
+            pkg-config \
+            libwebsockets-dev \
+            libssl-dev \
+            libubox-dev \
+            libubus-dev \
+            libjson-c-dev \
+            ${{ matrix.tls-backend == 'mbedtls' && 'libmbedtls-dev' || '' }}
+
+      - name: Configure (${{ matrix.tls-backend }})
+        run: cmake -B build -S src -DBBMD_TLS_BACKEND=${{ matrix.tls-backend }}
+
+      - name: Build (${{ matrix.tls-backend }})
+        run: cmake --build build
+
+      - name: Binary info
+        run: file build/bbmd && ls -lh build/bbmd
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            gcc \
+            pkg-config \
+            libwebsockets-dev \
+            libssl-dev \
+            libubox-dev \
+            libubus-dev \
+            libjson-c-dev
+
+      - name: Configure
+        run: cmake -B build -S src
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test (placeholder)
+        run: echo "No tests defined yet"
+
+  lint:
+    name: Lint check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cppcheck \
+            cmake \
+            gcc \
+            pkg-config \
+            libwebsockets-dev \
+            libssl-dev \
+            libubox-dev \
+            libubus-dev \
+            libjson-c-dev
+
+      - name: Configure
+        run: cmake -B build -S src -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=all --suppress=missingIncludeSystem \
+            --project=build/compile_commands.json \
+            --suppress=syntaxError \
+            --suppress=unmatchedSuppression \
+            --error-exitcode=1 \
+            src/ 2>&1 || echo "cppcheck found issues (non-fatal for now)"
