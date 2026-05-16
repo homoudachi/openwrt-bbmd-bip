@@ -96,12 +96,24 @@
 
 | # | Task | Deliverable | Status |
 |---|---|---|---|
-| 8.1 | Stress test: 50 concurrent SC connections | Test script + results | ⏭️ Blocked — needs sudo for QEMU image prep; cert path fix (8.5) removes bacnet-stack barrier |
+| 8.1 | Stress test: 50 concurrent SC connections | Test script + results | ⏭️ Ready — passwordless sudo available; QEMU image setup complete; LuCI-based testing VM running |
 | 8.2 | Binary size and memory profiling | Profiling report | ✅ 1.1MB stripped (x86_64), ~12.6MB runtime, NFR-1 over (<500KB target, MIPS build expected smaller) |
 | 8.3 | Install and test on physical router (e.g., GL.iNet) | Test report | ⏭️ Blocked — needs physical router |
 | 8.4 | README, install guide, configuration guide | `README.md`, `docs/` | ✅ README.md, docs/install-guide.md, docs/config-guide.md |
 | 8.5 | Tag v1.0.0 release | Git tag + GitHub release | ✅ v1.0.0 tagged (commit 9813642); includes -c flag fix, BACNET_FILE_PATH_RESTRICTED=0, MKP macro fix |
 | 8.6 | Submit to openwrt/packages feed | PR to openwrt/packages | ⏭️ Blocked — needs external PR approval |
+
+## Phase 9: Bugfix & Virtualization (Week 6+)
+
+**Goal**: Fix config duplication bug, establish QEMU-based testing workflow, profile MIPS binary size.
+
+| # | Task | Deliverable | Status |
+|---|---|---|---|
+| 9.1 | Fix duplicate config sections in LuCI form (#9) | `luci/root/etc/uci-defaults/40_bbmd-luci` | ✅ Fixed in cf26303 — uci-defaults used `uci get bbmd.globals` (named section) instead of `uci get bbmd.@globals[0]` (type-indexed) |
+| 9.2 | Set up QEMU-based LuCI testing VM | QEMU VM script + docs | ✅ OpenWrt 25.12.4 x86_64 booting with LuCI on port 8729; user-facing testing ready |
+| 9.3 | Port convention added to AGENTS.md | `AGENTS.md` | ✅ 667c194 |
+| 9.4 | Build for MIPS (mips_24kc) and profile binary size | Binary size report | ⏳ Next session |
+| 9.5 | Stress testing in QEMU | Test results | ⏳ Next session |
 
 ---
 
@@ -117,6 +129,7 @@
 | 6: Cert Mgmt | 4-5 | Certificate generation, docs |
 | 7: LuCI UI | 5-6 | Web admin interface |
 | 8: Testing/Release | 6 | Stress tests, physical tests, release |
+| 9: Bugfix & Virtualization | 6+ | Config fix, QEMU testing, MIPS profiling |
 
 ---
 

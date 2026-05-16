@@ -33,79 +33,121 @@ This is an **orchestrator-level prompt**. Your job is not to write code directly
 /skill tdd
 ```
 
-Also available: `triage`, `to-issues`, `diagnose`, `zoom-out`, `improve-codebase-architecture`
+Also available: `triage`, `to-issues`, `diagnose`, `zoom-out`, `improve-codebase-architecture`, `webapp-testing`
 
 ---
 
 ## Current State
 
-### Phase 1-6: All complete (issues #1-#6 closed)
-See previous handover for details. Core: OpenWrt package skeleton, BACnet/SC Hub, telemetry, SC Node, BIP Bridge, cert management.
-
-### Phase 7: LuCI Web UI (issue #7, closed)
-Status dashboard + config form + menu/ACL + UCI defaults.
+### Phases 1-7: All complete (issues #1-#7 closed)
+Core daemon (hub/node/bridge/telemetry/config), LuCI Web UI, certificate management. All closed.
 
 ### Phase 8: Complete (issue #8, closed)
 
 | # | Task | Status |
 |---|---|---|
-| 8.1 | Stress test: 50 concurrent SC connections | ⏭️ **Unblocked** — passwordless sudo now available |
+| 8.1 | Stress test: 50 concurrent SC connections | ⏳ **Unblocked** — passwordless sudo available; QEMU VM ready for bbmd install + test |
 | 8.2 | Binary size and memory profiling | ✅ 1.1MB stripped (x86_64), ~12.6MB runtime |
 | 8.3 | Install and test on physical router | ⏭️ Blocked — needs physical router |
 | 8.4 | README, install guide, configuration guide | ✅ |
 | 8.5 | Tag v1.0.0 release | ✅ v1.0.0 tagged (commit 9813642) |
 | 8.6 | Submit to openwrt/packages feed | ⏭️ Blocked — needs external PR |
 
-### Phase 9: Bugfix (issue #9, closed)
+### Phase 9: Bugfix & Virtualization (issue #9, closed)
 
 | # | Task | Status |
 |---|---|---|
-| 9.1 | Fix duplicate config sections in LuCI form | ✅ Fixed in cf26303 — uci-defaults used `uci get bbmd.globals` (named section) instead of `uci get bbmd.@globals[0]` (type-indexed) |
+| 9.1 | Fix duplicate config sections in LuCI (#9) | ✅ cf26303 — `uci get bbmd.@type[0]` |
+| 9.2 | QEMU-based LuCI testing VM | ✅ OpenWrt 25.12.4 x86_64 booting on port 8729 |
+| 9.3 | Port convention added to AGENTS.md | ✅ 667c194 |
+| 9.4 | Build for MIPS (mips_24kc) and profile binary size | ⏳ Next session |
+| 9.5 | Stress testing in QEMU | ⏳ Next session |
 
 ### v1.0.0 Release (commit 9813642, tag v1.0.0)
 
-Includes all Phase 1-7 work plus:
-- Portability: `-c, --config DIR` flag wired (sets UCI_CONFDIR)
-- Portability: `BACNET_FILE_PATH_RESTRICTED=0` (allows absolute cert paths)
-- Bugfix: MKP macro comma operator wrapping
-- Bugfix: Bridge default changed from `true` to `false`
-
-### LuCI Testing VM
-
-QEMU VM running OpenWrt 25.12.4 x86_64 for LuCI testing:
-```bash
-# VM: PID in /tmp/bbmd-qemu/qemu3.log, boot log at /tmp/bbmd-qemu/boot3.log
-# Port forward: host:8729 → guest:80
-# Access: http://<host-ip>:8729/cgi-bin/luci (login: root, no password)
-# BBMD pages: /admin/services/bbmd/status and /admin/services/bbmd/config
-```
+Includes all Phase 1-7 work plus portability fixes, MKP macro fix, bridge default fix.
 
 ---
 
-## Next Steps (in priority order)
+## QEMU Virtualization Setup
 
-### Stress testing (8.1) — now unblocked
+OpenWrt 25.12.4 x86_64 VM running for LuCI testing and future bbmd daemon testing:
 
-Passwordless sudo is available. Steps:
-```bash
-# 1. Build bbmd binary (native cmake with stubs)
-cmake -B build -S src -DBBMD_TLS_BACKEND=openssl && cmake --build build
+```
+VM image:   /tmp/bbmd-qemu/openwrt.img (512MB, ext4 combined)
+Mount:      sudo mount -o loop,offset=$((33792*512)) openwrt.img /tmp/bbmd-qemu/rootfs
+Boot:       qemu-system-x86_64 -m 512M -drive file=openwrt.img,format=raw,if=virtio \
+              -netdev user,id=net0,hostfwd=tcp::8729-:80 -device virtio-net,netdev=net0 \
+              -display none -serial file:/tmp/bbmd-qemu/boot.log -no-reboot \
+              -pidfile /tmp/bbmd-qemu/qemu.pid -daemonize
+Access:     http://<host-ip>:8729/cgi-bin/luci (login: root, no password)
+Network:    static 10.0.2.15/24 on eth0 (matches QEMU user-mode guest IP)
+Pages:      /cgi-bin/luci/admin/services/bbmd/status
+            /cgi-bin/luci/admin/services/bbmd/config
+VM PID:     $(cat /tmp/bbmd-qemu/qemu6.pid)
 
-# 2. Install into QEMU rootfs
-sudo mount -o loop,offset=$((33792*512)) /tmp/bbmd-qemu/openwrt.img /tmp/bbmd-qemu/rootfs
-sudo cp build/bbmd /tmp/bbmd-qemu/rootfs/usr/bin/
-# Copy certs, write init script, etc.
-sudo umount /tmp/bbmd-qemu/rootfs
-
-# 3. Boot and run stress tests
+To kill:    kill $(cat /tmp/bbmd-qemu/qemu6.pid)
+To modify:  kill VM → mount → edit files → sync → umount → boot
 ```
 
-### openwrt/packages submission (8.6)
+**Critical: OpenWrt uses overlayfs.** On first boot, changes go to overlay (if present), otherwise directly to ext4. Always `sync` before unmounting the loop device. Verify changes persisted by re-mounting and checking file content.
 
-Submit PR to `openwrt/packages` feed adding `admin/bbmd/`. Requirements:
-- Conforms to OpenWrt package policy
-- Build tested on CI (x86_64, mips_24kc, aarch64_cortex-a53)
-- Maintainer info filled in Makefile
+**Config on VM (clean, no duplicates):**
+- Network: static 10.0.2.15/24 (must match QEMU user-mode for uhttpd to start promptly)
+- BBMD: 6 anonymous sections (globals, hub, node, telemetry, bbmd, logging)
+- LuCI files: status.js, config.js, menu.json, ACL.json all installed in `/www/luci-static/resources/view/bbmd/` and `/usr/share/`
+
+---
+
+## Next Session — Priority Tasks
+
+User wants: **more virtualization/testing + MIPS binary size profiling**
+
+### 1. Install bbmd daemon into QEMU VM for live testing
+
+```bash
+# Build native binary
+export PKG_CONFIG_PATH=/tmp/bbmd-pkgconfig:$PKG_CONFIG_PATH
+cmake -B build -S src -DBBMD_TLS_BACKEND=openssl
+cmake --build build
+
+# Install into VM
+kill $(cat /tmp/bbmd-qemu/qemu6.pid)
+sudo mount -o loop,offset=$((33792*512)) /tmp/bbmd-qemu/openwrt.img /tmp/bbmd-qemu/rootfs
+sudo cp build/bbmd /tmp/bbmd-qemu/rootfs/usr/bin/
+sudo cp files/cert-gen.sh /tmp/bbmd-qemu/rootfs/usr/bin/
+# Generate certs, create init script, configure procd
+sudo sync && sudo umount /tmp/bbmd-qemu/rootfs
+# Reboot VM
+```
+
+**Challenges**: the native cmake binary links against stub `.so` libraries. It won't run in the real OpenWrt VM without proper libwebsockets/libubox. Options:
+- A. Cross-compile from OpenWrt SDK (proper .ipk)
+- B. Static-link or copy host libraries to VM
+- C. Use the native build with LD_LIBRARY_PATH hacks in the VM
+
+### 2. MIPS binary size profiling
+
+Build for mips_24kc target:
+- Needs OpenWrt SDK for mips_24kc (musl)
+- `make package/bbmd/compile V=s` from within the SDK
+- Profile stripped binary size vs. x86_64 baseline (1.1MB stripped)
+- Target: <500KB per NFR-1
+
+This system has no OpenWrt SDK. Options:
+- A. Download OpenWrt SDK for mips_24kc: `https://downloads.openwrt.org/releases/25.12.4/targets/ath79/generic/openwrt-sdk-*.tar.xz`
+- B. Use CI artifacts from `.github/workflows/build.yml` (already builds for mips_24kc)
+- C. Docker-based cross-compilation
+
+### 3. Stress testing (8.1)
+
+With bbmd installed in QEMU VM, simulate concurrent SC connections. Write test harness script.
+
+### 4. Additional virtualization improvements
+
+- Set up multiple VMs (hub + 2 nodes) on separate QEMU instances with tap networking
+- Test bridge BIP ↔ BSC routing between VMs
+- LuCI-based config testing workflow
 
 ---
 
@@ -129,47 +171,42 @@ cmake --build build
 
 ---
 
-## File Map (post-Phase 8, v1.0.0)
+## File Map (post-issue #9)
 
 ```
 src/
-├── bbmd.c              ← Main loop: hub/node/bridge lifecycle, telemetry timer, SIGHUP reload; 3-way mode exclusivity; -c flag support
-├── bbmd_hub.c/h        ← Hub Mode: env vars + HUB_FUNCTION_BINDING, Device Object, Send_I_Am, event loop
-├── bbmd_node.c/h       ← Node Mode: mirrors hub; PRIMARY_HUB_URI + FAILOVER_HUB_URI, no HUB_FUNCTION_BINDING
-├── bbmd_bridge.c/h     ← Bridge Mode: two-datalink router (BIP UDP + BSC hub), NPDU routing, BBMD FD, DNET table
+├── bbmd.c              ← Main loop: hub/node/bridge lifecycle, telemetry timer, SIGHUP reload
+├── bbmd_hub.c/h        ← Hub Mode: WebSocket server, TLS, connection table, message routing
+├── bbmd_node.c/h       ← Node Mode: client connect, PRIMARY_HUB_URI + FAILOVER_HUB_URI
+├── bbmd_bridge.c/h     ← Bridge Mode: two-datalink router (BIP UDP ↔ BSC hub)
 ├── bbmd_telemetry.c/h  ← Telemetry: /proc polling → BACnet Analog Input objects
-├── bbmd_config.c/h     ← UCI config reader (all sections parsed); accepts optional confdir param
-├── CMakeLists.txt      ← Build: bacnet-stack submodule, compile defs inc. BACNET_FILE_PATH_RESTRICTED=0, BACDL_BIP+BACDL_BSC ON
+├── bbmd_config.c/h     ← UCI config reader (all sections); optional confdir param
+├── CMakeLists.txt      ← Build: bacnet-stack submodule + bbmd sources
 ├── bacnet/             ← bacnet-stack submodule
 
 luci/
-├── Makefile            ← LuCI app package (standalone, no luci.mk)
+├── Makefile
 ├── htdocs/luci-static/resources/view/bbmd/
-│   ├── status.js       ← Status dashboard: PID check, device identity, modes, CPU/mem/uptime
-│   └── config.js       ← Configuration form: 6 TypedSections with conditional depends
+│   ├── status.js       ← Status dashboard
+│   └── config.js       ← Configuration form (6 TypedSections)
 └── root/
-    ├── etc/uci-defaults/40_bbmd-luci ← First-boot UCI defaults + cert dir
+    ├── etc/uci-defaults/40_bbmd-luci ← FIXED: uses @type[0] syntax (cf26303)
     └── usr/share/
-        ├── rpcd/acl.d/luci-app-bbmd.json  ← ACL: UCI read/write + /proc file access
-        └── luci/menu.d/luci-app-bbmd.json ← Menu: Services → BBMD (BACnet)
+        ├── rpcd/acl.d/luci-app-bbmd.json
+        └── luci/menu.d/luci-app-bbmd.json
 
 files/
-└── cert-gen.sh         ← X.509 certificate generation script (CA, hub, node)
+├── cert-gen.sh         ← X.509 certificate generation script
+├── bbmd.init           ← procd init script
+└── bbmd.config         ← UCI config schema
 
 docs/
-├── certificates.md      ← Certificate management documentation
-├── install-guide.md     ← Installation guide (prerequisites, opkg, certs, troubleshooting)
-├── config-guide.md      ← UCI configuration reference (6 sections, 4 examples, mode restrictions)
-├── fsd.md               ← Functional spec
-└── roadmap.md           ← Implementation roadmap (all phases marked)
-```
-
-**Docs updated:**
-```
-CONTEXT.md              ← Phase 8 complete, portability section added
-docs/roadmap.md         ← Phase 8.5 marked complete, file map updated
-docs/agents/domain.md   ← Phase 8 status note
-docs/fsd.md             ← Phase 8 status (from previous handover)
+├── roadmap.md           ← Updated: Phase 9 added, 8.1 unblocked
+├── fsd.md
+├── certificates.md
+├── install-guide.md
+├── config-guide.md
+└── adr/
 ```
 
 ---
@@ -177,11 +214,12 @@ docs/fsd.md             ← Phase 8 status (from previous handover)
 ## Uncommitted Changes
 
 ```
- M handover.md             ← Handover status updates (this edit)
- M src/CMakeLists.txt      ← Local build stubs only (not for commit)
+ M handover.md             ← This edit
+ M src/CMakeLists.txt      ← Local build stubs (not for commit)
 ```
 
-Recent commits on `main` (not yet pushed):
+Recent commits on `main` (pushed):
+- `d8ea01c` — docs: update handover for issue #9 fix and LuCI QEMU setup
 - `667c194` — docs: add port selection convention to AGENTS.md
 - `cf26303` — fix: use @type[0] syntax in uci-defaults to prevent duplicate config sections (#9)
 
@@ -189,7 +227,8 @@ Recent commits on `main` (not yet pushed):
 
 ## Remaining Issues
 
-Issue #9 closed (duplicate config fix). Remaining work:
-- Stress testing (8.1) — now unblocked (sudo available)
+All issues closed. Next work:
+- Stress testing (8.1) — unblocked, needs bbmd installed in QEMU VM
+- MIPS binary size profiling (9.4) — needs OpenWrt SDK or CI access
 - Physical router testing (8.3) — needs hardware
 - openwrt/packages feed submission (8.6) — needs external PR
