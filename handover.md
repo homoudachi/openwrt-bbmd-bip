@@ -1,9 +1,51 @@
 # Handover Prompt — OpenWrt BACnet/SC BBMD Project
 
 **Repo**: `homoudachi/openwrt-bbmd-bip` (`main` branch)
-**Working dir**: `/home/matt/opencode/openwrt-bbmd-bip`
+**Working dir**: `C:\Users\Matt\Documents\Projects\opencode\openwrt-bbmd-bip`
 **Release**: https://github.com/homoudachi/openwrt-bbmd-bip/releases/tag/v1.0.0
 **Watch the issues**: `gh issue list --repo homoudachi/openwrt-bbmd-bip`
+**Last commit**: `ada082a` — fix release workflow
+
+---
+
+## Current State (2026-05-17)
+
+### Just Completed: Phase 10 — BIP-only BBMD mode (NEXT SESSION: BUILD & TEST)
+
+Phase 10 added a **BIP-only BBMD mode** that runs BACnet/IP with foreign device support **without any BACnet/SC** (no TLS certs, no WebSocket). Designed for Tailscale VPN foreign device access.
+
+**New files**:
+- `src/bbmd_bip.c` (170 lines) — BIP-only BBMD module
+- `src/bbmd_bip.h` (11 lines) — API header
+- `.github/workflows/release.yml` — OpenWrt SDK cross-compilation workflow
+
+**Modified files**: `src/bbmd.c`, `src/bbmd_config.c/h`, `src/CMakeLists.txt`, `docs/roadmap.md`, `docs/config-guide.md`, `files/bbmd.config`, LuCI config.js + status.js, uci-defaults
+
+**New UCI section**:
+```
+config bip 'bip'
+    option enabled '0'      # enable for BIP-only mode
+    option port '47808'     # UDP port
+    # lan_interface omitted = bind 0.0.0.0 (all ifaces) for Tailscale
+```
+
+**Mode restrictions**: BIP is mutually exclusive with hub, node, and bridge. Coexists with telemetry.
+
+### NEXT: Release Build (issue #36)
+
+A `release.yml` workflow exists for cross-compilation but has **NOT yet been verified to succeed**. Three bugs were found and fixed:
+1. SDK grep pattern (greedy regex consumed .tar.zst suffix) — **FIXED**
+2. Missing `make defconfig` causing recursive dependency error — **FIXED**
+3. `PKG_SOURCE_URL` placed at end of Makefile instead of before includes — **FIXED**
+
+**To trigger**: `gh workflow run release.yml -f openwrt_version=25.12.2 -f target=ath79/generic -f variant=openssl`
+
+**Remaining risks**: Feed download may timeout, dependency compilation may fail, disk space.
+
+**If the workflow still fails**, alternatives:
+- Build locally with Docker: `docker run -v $(pwd):/src openwrt/sdk:25.12.2-ath79-generic`
+- Install OpenWrt SDK on a Linux VM and build manually
+- Use the existing QEMU VM (x86_64 OpenWrt 25.12.4) for native x86 testing first
 
 ---
 
