@@ -103,6 +103,70 @@
 | 8.5 | Tag v1.0.0 release | Git tag + GitHub release | ✅ v1.0.0 tagged (commit 9813642); includes -c flag fix, BACNET_FILE_PATH_RESTRICTED=0, MKP macro fix |
 | 8.6 | Submit to openwrt/packages feed | PR to openwrt/packages | ⏭️ Blocked — needs external PR approval |
 
+## Phase 10: BIP-Only BBMD Mode (Tailscale Foreign Device)
+
+**Goal**: Standalone BIP/BBMD mode without SC/WebSocket/TLS dependency.  
+**Use case**: Remote BACnet client registers as BBMD foreign device over Tailscale VPN, accesses BACnet/IP devices on the router's LAN.
+
+### Architecture
+
+```
+Windows PC (Tailscale IP)  ──Tailscale VPN── OpenWrt Router (Tailscale IP + LAN IP)
+  BACnet client                     │            bbmd bip mode: UDP 0.0.0.0:47808
+  Foreign Device                    │            BBMD foreign device table
+  ────────────────                  │            ┌──────────────────┐
+  Register-FD ──────────────────────┤            │ bvlc: FD fwd     │
+  Who-Is (via Dist-Bcast) ──────────┤            │ bip_receive()    │
+                                    │            │ apdu_handler()   │
+                                    │            └──────┬───────────┘
+                                    │                   │ LAN (192.168.1.x)
+                                    │            ┌──────┴───────────┐
+                                    │            │ BIP Device       │
+                                    │            │ BACnet/IP UDP    │
+                                    │            └──────────────────┘
+```
+
+| # | Task | Deliverable | Status |
+|---|---|---|---|
+| 10.1 | Add `bip` UCI config structs and reader | `bbmd_config.h/c` — `bbmd_bip_config_t`, defaults, load/free | ⏳ |
+| 10.2 | Implement BIP-only mode module | `src/bbmd_bip.c/h` — BIP datalink, BBMD via bvlc, service handlers, no TLS/SC | ⏳ |
+| 10.3 | Integrate BIP mode into main loop + build | `src/bbmd.c` — start/stop/reload/maintenance; `CMakeLists.txt` — add source; mutex with hub/node/bridge | ⏳ |
+| 10.4 | Update docs, UCI defaults, LuCI | `docs/config-guide.md`, `files/bbmd.config`, `luci/` uci-defaults + config.js | ⏳ |
+
+### Tailscale / Foreign Device Design
+
+- **Bind to all interfaces**: Don't set `BACNET_IFACE` (or set empty) so `bip_init()` binds `INADDR_ANY`. This makes the BBMD reachable on both `br-lan` (LAN devices) and `tailscale0` (remote foreign device).
+- **Foreign device registration**: bacnet-stack's `bvlc` module records `src_addr` from `recvfrom()`. A remote client's Tailscale IP is recorded and forwarded to correctly.
+- **Broadcast forwarding**: Local BACnet/IP broadcasts on LAN are forwarded to registered foreign devices via unicast `Forwarded-NPDU`. Foreign device `Distribute-Broadcast-To-Network` messages are forwarded to LAN as broadcasts.
+- **No SC dependency**: No TLS certs, no WebSocket, no `BSC_Net` datalink. Pure UDP.
+- **Mutual exclusion**: BIP mode cannot run alongside hub, node, or bridge (one BACnet datalink active at a time). Telemetry can coexist.
+- **Keepalive**: Foreign devices must re-register periodically. `bvlc_maintenance_timer()` handles FDT expiry.
+
+### Example Configuration
+
+```
+config bip 'bip'
+    option enabled '1'
+    option port '47808'
+    # omit lan_interface to bind all interfaces (required for Tailscale)
+
+config globals 'globals'
+    option device_instance '1001'
+    option device_name 'Router BBMD'
+    option network_number '1'
+
+config telemetry 'telemetry'
+    option enabled '1'
+
+config hub 'hub'
+    option enabled '0'
+
+config bbmd 'bbmd'
+    option enabled '0'
+```
+
+---
+
 ## Phase 9: Bugfix & Virtualization (Week 6+)
 
 **Goal**: Fix config duplication bug, establish QEMU-based testing workflow, profile MIPS binary size.

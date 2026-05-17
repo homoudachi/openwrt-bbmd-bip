@@ -57,11 +57,12 @@ endif()
 
 set(BBMD_SOURCES
   bbmd.c
+  bbmd_bip.c
+  bbmd_bridge.c
+  bbmd_config.c
   bbmd_hub.c
   bbmd_node.c
-  bbmd_config.c
   bbmd_telemetry.c
-  bbmd_bridge.c
 )
 
 add_executable(bbmd ${BBMD_SOURCES})

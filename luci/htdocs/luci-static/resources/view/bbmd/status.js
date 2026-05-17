@@ -73,6 +73,7 @@ return view.extend({
 		var nodeEnabled = uciGet(nodeSection, 'enabled', '0') === '1';
 		var telemetryEnabled = uciGet(telemetrySection, 'enabled', '0') === '1';
 		var bbmdEnabled = uciGet(bbmdSection, 'enabled', '0') === '1';
+		var bipEnabled = uciGet('bip', 'enabled', '0') === '1';
 
 		var uptimeSecs = parseFloat((uptimeRaw || '').split(' ')[0]) || 0;
 		var uptimeStr = formatUptime(uptimeSecs);
@@ -141,12 +142,15 @@ return view.extend({
 			field(_('Node Mode'), nodeEnabled ? _('Enabled') : _('Disabled')),
 			field(_('Telemetry'), telemetryEnabled ? _('Enabled') : _('Disabled')),
 			field(_('BBMD Service'), bbmdEnabled ? _('Enabled') : _('Disabled')),
+			field(_('BIP BBMD'), bipEnabled ? _('Enabled') : _('Disabled')),
 			field(_('Log Level'), uciGet(loggingSection, 'level', 'info')),
 		];
 		if (hubEnabled)
 			modeRows.push(field(_('Hub Port'), uciGet(hubSection, 'port', '443')));
 		if (nodeEnabled)
 			modeRows.push(field(_('Primary Hub URI'), uciGet(nodeSection, 'primary_hub', '-')));
+		if (bipEnabled)
+			modeRows.push(field(_('BIP Port'), uciGet('bip', 'port', '47808')));
 
 		body.appendChild(section(_('Active Modes'), modeRows));
 

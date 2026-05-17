@@ -56,6 +56,13 @@ uci -q get bbmd.@bbmd[0] > /dev/null || {
     uci commit bbmd
 }
 
+uci -q get bbmd.@bip[0] > /dev/null || {
+    uci set bbmd.bip=bip
+    uci set bbmd.bip.enabled='0'
+    uci set bbmd.bip.port='47808'
+    uci commit bbmd
+}
+
 uci -q get bbmd.@logging[0] > /dev/null || {
     uci set bbmd.logging=logging
     uci set bbmd.logging.level='info'

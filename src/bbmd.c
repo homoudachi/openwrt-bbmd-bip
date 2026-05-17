@@ -15,12 +15,14 @@
 #include "bbmd_hub.h"
 #include "bbmd_node.h"
 #include "bbmd_bridge.h"
+#include "bbmd_bip.h"
 #include "bbmd_telemetry.h"
 
 typedef struct {
     bool hub_mode;
     bool node_mode;
     bool bridge_mode;
+    bool bip_mode;
     bool telemetry_mode;
 } bbmd_modes_t;
 
@@ -154,6 +156,30 @@ static void bridge_reload(bbmd_config_t *config)
     }
 }
 
+static int bip_start(bbmd_config_t *config)
+{
+    if (bbmd_bip_init(config) != 0) {
+        syslog(LOG_ERR, "Failed to initialize BIP/BBMD mode");
+        return -1;
+    }
+    syslog(LOG_INFO, "BIP/BBMD mode started on port %u",
+           config->bip.port);
+    return 0;
+}
+
+static void bip_reload(bbmd_config_t *config)
+{
+    bbmd_bip_stop();
+    if (config->bip.enabled) {
+        if (bbmd_bip_init(config) != 0) {
+            syslog(LOG_ERR, "Failed to restart BIP/BBMD mode");
+        } else {
+            syslog(LOG_INFO, "BIP/BBMD mode restarted on port %u",
+                   config->bip.port);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     bool foreground = false;
@@ -194,9 +220,10 @@ int main(int argc, char **argv)
     modes.hub_mode = config.hub.enabled;
     modes.node_mode = config.node.enabled;
     modes.bridge_mode = config.bridge.enabled;
+    modes.bip_mode = config.bip.enabled;
     modes.telemetry_mode = config.telemetry.enabled;
 
-    if (!modes.hub_mode && !modes.node_mode && !modes.bridge_mode) {
+    if (!modes.hub_mode && !modes.node_mode && !modes.bridge_mode && !modes.bip_mode) {
         fprintf(stderr, "No active modes configured\n");
         bbmd_config_free(&config);
         return 1;
@@ -220,6 +247,24 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (modes.bip_mode && modes.hub_mode) {
+        fprintf(stderr, "Cannot run as both bip and hub simultaneously\n");
+        bbmd_config_free(&config);
+        return 1;
+    }
+
+    if (modes.bip_mode && modes.node_mode) {
+        fprintf(stderr, "Cannot run as both bip and node simultaneously\n");
+        bbmd_config_free(&config);
+        return 1;
+    }
+
+    if (modes.bip_mode && modes.bridge_mode) {
+        fprintf(stderr, "Cannot run as both bip and bridge simultaneously\n");
+        bbmd_config_free(&config);
+        return 1;
+    }
+
     if (!foreground) {
         if (daemon(0, 0) != 0) {
             perror("daemon");
@@ -232,9 +277,9 @@ int main(int argc, char **argv)
 
     openlog("bbmd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
     syslog(LOG_INFO, "bbmd %s starting", BBMD_VERSION);
-    syslog(LOG_INFO, "Modes: hub=%d node=%d bridge=%d telemetry=%d",
+    syslog(LOG_INFO, "Modes: hub=%d node=%d bridge=%d bip=%d telemetry=%d",
            modes.hub_mode, modes.node_mode, modes.bridge_mode,
-           modes.telemetry_mode);
+           modes.bip_mode, modes.telemetry_mode);
 
     if (modes.hub_mode) {
         if (hub_start(&config) != 0) {
@@ -257,6 +302,15 @@ int main(int argc, char **argv)
     if (modes.bridge_mode) {
         if (bridge_start(&config) != 0) {
             syslog(LOG_ERR, "Bridge start failed, exiting");
+            bbmd_config_free(&config);
+            closelog();
+            return 1;
+        }
+    }
+
+    if (modes.bip_mode) {
+        if (bip_start(&config) != 0) {
+            syslog(LOG_ERR, "BIP start failed, exiting");
             bbmd_config_free(&config);
             closelog();
             return 1;
@@ -293,9 +347,13 @@ int main(int argc, char **argv)
             if (modes.bridge_mode) {
                 bridge_reload(&config);
             }
+            if (modes.bip_mode) {
+                bip_reload(&config);
+            }
             modes.hub_mode = config.hub.enabled;
             modes.node_mode = config.node.enabled;
             modes.bridge_mode = config.bridge.enabled;
+            modes.bip_mode = config.bip.enabled;
             modes.telemetry_mode = config.telemetry.enabled;
 
             if (config.telemetry.enabled) {
@@ -308,10 +366,11 @@ int main(int argc, char **argv)
             syslog(LOG_INFO, "Configuration reloaded");
         }
 
-        if (modes.hub_mode || modes.node_mode || modes.bridge_mode) {
+        if (modes.hub_mode || modes.node_mode || modes.bridge_mode || modes.bip_mode) {
             if (modes.hub_mode) bbmd_hub_run();
             if (modes.node_mode) bbmd_node_run();
             if (modes.bridge_mode) bbmd_bridge_run();
+            if (modes.bip_mode) bbmd_bip_run();
 
             uint64_t now = get_time_ms();
             if (now - last_maintenance >= 1000) {
@@ -321,6 +380,7 @@ int main(int argc, char **argv)
                 if (modes.hub_mode) bbmd_hub_maintenance(elapsed);
                 if (modes.node_mode) bbmd_node_maintenance(elapsed);
                 if (modes.bridge_mode) bbmd_bridge_maintenance(elapsed);
+                if (modes.bip_mode) bbmd_bip_maintenance(elapsed);
             }
         } else {
             usleep(100000);
@@ -347,6 +407,10 @@ int main(int argc, char **argv)
 
     if (modes.bridge_mode) {
         bbmd_bridge_stop();
+    }
+
+    if (modes.bip_mode) {
+        bbmd_bip_stop();
     }
 
     if (modes.telemetry_mode) {

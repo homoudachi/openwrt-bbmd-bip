@@ -1,0 +1,81 @@
+name: Build OpenWrt Package Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      openwrt_version:
+        description: 'OpenWrt version (e.g. 25.12.2)'
+        required: true
+        default: '25.12.2'
+      target:
+        description: 'Target (e.g. ath79/generic)'
+        required: true
+        default: 'ath79/generic'
+      variant:
+        description: 'TLS backend'
+        required: true
+        type: choice
+        options:
+          - openssl
+          - mbedtls
+        default: 'openssl'
+
+jobs:
+  build:
+    name: Build ${{ inputs.target }} (${{ inputs.variant }})
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download OpenWrt SDK
+        run: |
+          BASE="https://downloads.openwrt.org/releases/${{ inputs.openwrt_version }}/targets/${{ inputs.target }}"
+          SDK_FILE=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-[^"]+' | grep 'Linux-x86_64\.tar\.xz"' | sed 's/"$//' | head -1)
+          if [ -z "$SDK_FILE" ]; then
+            echo "Failed to find SDK for ${{ inputs.target }} at $BASE"
+            curl -sL "$BASE/" | head -50
+            exit 1
+          fi
+          echo "Downloading: $BASE/$SDK_FILE"
+          wget -nv "$BASE/$SDK_FILE"
+          mkdir -p sdk
+          tar xf "$SDK_FILE" --strip-components=1 -C sdk
+
+      - name: Prepare package
+        run: |
+          mkdir -p sdk/package/bbmd
+          cp Makefile sdk/package/bbmd/
+          cp Config.in sdk/package/bbmd/ 2>/dev/null || true
+          cp -r files/* sdk/package/bbmd/ 2>/dev/null || true
+
+          # Create source tarball (OpenWrt build system needs this)
+          git archive --format=tar.gz --prefix="bbmd-1.0.0/" -o "sdk/dl/bbmd-1.0.0.tar.gz" HEAD
+
+          # Point Makefile at local tarball instead of git clone
+          sed -i 's|PKG_SOURCE_PROTO:=git|PKG_SOURCE:=bbmd-1.0.0.tar.gz|' sdk/package/bbmd/Makefile
+          sed -i '/PKG_SOURCE_URL:=https:\/\/github.com/d' sdk/package/bbmd/Makefile
+          sed -i '/PKG_SOURCE_DATE/d' sdk/package/bbmd/Makefile
+          sed -i '/PKG_SOURCE_VERSION/d' sdk/package/bbmd/Makefile
+          echo 'PKG_SOURCE_URL:=file://$(CURDIR)/dl/' >> sdk/package/bbmd/Makefile
+
+      - name: Update feeds
+        run: |
+          cd sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Build package
+        run: |
+          cd sdk
+          make package/bbmd-${{ inputs.variant }}/compile V=s 2>&1
+
+      - name: Find artifacts
+        run: |
+          find sdk/bin -name "bbmd*.ipk" -exec ls -lh {} \;
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bbmd-${{ inputs.openwrt_version }}-${{ inputs.target }}-${{ inputs.variant }}
+          path: sdk/bin/packages/**/base/bbmd*.ipk

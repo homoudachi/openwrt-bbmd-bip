@@ -128,6 +128,24 @@ config bbmd 'bbmd'
     option lan_interface 'br-lan'
 ```
 
+### `bip` — BIP-Only BBMD Mode
+
+Run as a standalone BACnet/IP BBMD without BACnet/SC. No TLS certificates required. Suitable for Tailscale VPN / foreign-device setups where remote clients register as BBMD foreign devices and access BACnet/IP devices on the router's LAN.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | boolean | `0` | Enable BIP-only BBMD mode. Cannot run simultaneously with hub, node, or bridge mode. |
+| `port` | integer | `47808` | UDP port for BACnet/IP traffic (standard: 0xBAC0 = 47808). |
+| `lan_interface` | string | (all) | LAN interface to bind the BACnet/IP UDP socket to. Leave empty or omit to bind all interfaces — required for Tailscale VPN foreign device support. |
+
+```
+config bip 'bip'
+    option enabled '1'
+    option port '47808'
+    # lan_interface omitted: binds to all interfaces (0.0.0.0)
+    # for Tailscale foreign device support
+```
+
 ### `logging` — Log Level
 
 | Option | Type | Default | Description |
@@ -143,7 +161,9 @@ config logging 'logging'
 
 - **Hub + Node**: Cannot run simultaneously. The BACnet/SC datalink is a singleton — the daemon can be either a hub (accepting connections) or a node (connecting to a hub), but not both.
 - **Bridge + Hub/Node**: The BBMD bridge is exclusive with both hub and node mode. Each mode initialises a separate BACnet datalink, and the bridge's two-datalink router structure conflicts with the SC-only hub/node setup.
+- **BIP mode**: BIP mode is also exclusive with hub, node, and bridge mode.
 - **Bridge + Telemetry**: These can run together. Telemetry only depends on `/proc` files and the BACnet Device Object, not on the datalink type.
+- **BIP + Telemetry**: BIP mode can coexist with telemetry.
 
 The daemon validates mode exclusivity on startup and logs an error if conflicting modes are enabled.
 
@@ -274,6 +294,36 @@ config telemetry 'telemetry'
 
 config bbmd 'bbmd'
     option enabled '0'
+
+config logging 'logging'
+    option level 'info'
+```
+
+### BIP-Only BBMD with Tailscale (No Certs Required)
+
+A standalone BACnet/IP BBMD. Remote clients register as foreign devices over Tailscale VPN:
+
+```
+config globals 'globals'
+    option device_instance '1001'
+    option device_name 'Router BBMD'
+    option network_number '1'
+
+config hub 'hub'
+    option enabled '0'
+
+config node 'node'
+    option enabled '0'
+
+config bbmd 'bbmd'
+    option enabled '0'
+
+config bip 'bip'
+    option enabled '1'
+    option port '47808'
+
+config telemetry 'telemetry'
+    option enabled '1'
 
 config logging 'logging'
     option level 'info'

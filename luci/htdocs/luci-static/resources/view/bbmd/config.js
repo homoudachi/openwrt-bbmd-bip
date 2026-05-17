@@ -174,6 +174,26 @@ return view.extend({
 		o.placeholder = 'br-lan';
 		o.depends('enabled', '1');
 
+		// --- BIP (BBMD) ---
+
+		s = m.section(form.TypedSection, 'bip', _('BIP BBMD'));
+		s.anonymous = true;
+		s.description = _('Standalone BACnet/IP BBMD mode. No TLS certificates required. Use for Tailscale VPN / foreign-device setups.');
+
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o.default = '0';
+
+		o = s.option(form.Value, 'port', _('Port'));
+		o.datatype = 'port';
+		o.placeholder = '47808';
+		o.depends('enabled', '1');
+
+		o = s.option(form.Value, 'lan_interface', _('LAN Interface'));
+		o.datatype = 'string';
+		o.placeholder = _('(all interfaces)');
+		o.description = _('Leave empty to bind all interfaces (required for Tailscale VPN).');
+		o.depends('enabled', '1');
+
 		// --- Logging ---
 
 		s = m.section(form.TypedSection, 'logging', _('Logging'));

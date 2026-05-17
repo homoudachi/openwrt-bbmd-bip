@@ -49,6 +49,12 @@ typedef struct {
     bool enabled;
     uint16_t port;
     char *lan_interface;
+} bbmd_bip_config_t;
+
+typedef struct {
+    bool enabled;
+    uint16_t port;
+    char *lan_interface;
 } bbmd_bridge_config_t;
 
 typedef struct {
@@ -61,6 +67,7 @@ typedef struct {
     bbmd_node_config_t node;
     bbmd_telemetry_config_t telemetry;
     bbmd_bridge_config_t bridge;
+    bbmd_bip_config_t bip;
     bbmd_logging_config_t logging;
 } bbmd_config_t;
 

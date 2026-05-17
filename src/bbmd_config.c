@@ -43,6 +43,10 @@ static void defaults_init(bbmd_config_t *cfg)
     cfg->bridge.port = 47808;
     str_set(&cfg->bridge.lan_interface, "br-lan");
 
+    cfg->bip.enabled = false;
+    cfg->bip.port = 47808;
+    str_set(&cfg->bip.lan_interface, NULL);
+
     str_set(&cfg->logging.level, "info");
 }
 
@@ -214,6 +218,13 @@ int bbmd_config_load(bbmd_config_t *config, const char *confdir)
     read_str(ctx, MKP("bbmd", "lan_interface"),
              &config->bridge.lan_interface);
 
+    read_bool(ctx, MKP("bip", "enabled"),
+              &config->bip.enabled);
+    read_u16(ctx, MKP("bip", "port"),
+             &config->bip.port);
+    read_str(ctx, MKP("bip", "lan_interface"),
+             &config->bip.lan_interface);
+
     read_str(ctx, MKP("logging", "level"),
              &config->logging.level);
 
@@ -245,6 +256,8 @@ void bbmd_config_free(bbmd_config_t *config)
     free(config->node.ca_cert);
 
     free(config->bridge.lan_interface);
+
+    free(config->bip.lan_interface);
 
     free(config->logging.level);
 
