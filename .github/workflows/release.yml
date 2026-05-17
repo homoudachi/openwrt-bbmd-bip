@@ -32,10 +32,16 @@ jobs:
       - name: Download OpenWrt SDK
         run: |
           BASE="https://downloads.openwrt.org/releases/${{ inputs.openwrt_version }}/targets/${{ inputs.target }}"
-          SDK_FILE=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-[^<>\s]+\.tar\.(xz|zst)' | head -1)
+          PAGE=$(curl -sL "$BASE/")
+          # Try .zst first (OpenWrt 25.12+), then .xz (older releases)
+          SDK_FILE=$(echo "$PAGE" | grep -o 'openwrt-sdk-[^"]*\.tar\.zst' | head -1)
+          if [ -z "$SDK_FILE" ]; then
+            SDK_FILE=$(echo "$PAGE" | grep -o 'openwrt-sdk-[^"]*\.tar\.xz' | head -1)
+          fi
           if [ -z "$SDK_FILE" ]; then
             echo "Failed to find SDK for ${{ inputs.target }} at $BASE"
-            curl -sL "$BASE/" | head -50
+            echo "--- Page excerpt: ---"
+            echo "$PAGE" | grep -i sdk | head -5
             exit 1
           fi
           echo "Downloading: $BASE/$SDK_FILE"
@@ -49,20 +55,22 @@ jobs:
 
       - name: Prepare package
         run: |
-          mkdir -p sdk/package/bbmd
+          mkdir -p sdk/package/bbmd sdk/dl
           cp Makefile sdk/package/bbmd/
           cp Config.in sdk/package/bbmd/ 2>/dev/null || true
           cp -r files/* sdk/package/bbmd/ 2>/dev/null || true
 
-          # Create source tarball (OpenWrt build system needs this)
+          # Create source tarball (OpenWrt build system finds it in dl/)
           git archive --format=tar.gz --prefix="bbmd-1.0.0/" -o "sdk/dl/bbmd-1.0.0.tar.gz" HEAD
 
-          # Point Makefile at local tarball instead of git clone
+          # Rewrite Makefile to use local tarball instead of git clone
+          # PKG_SOURCE and PKG_SOURCE_URL must be defined before include $(INCLUDE_DIR)/package.mk
           sed -i 's|PKG_SOURCE_PROTO:=git|PKG_SOURCE:=bbmd-1.0.0.tar.gz|' sdk/package/bbmd/Makefile
           sed -i '/PKG_SOURCE_URL:=https:\/\/github.com/d' sdk/package/bbmd/Makefile
           sed -i '/PKG_SOURCE_DATE/d' sdk/package/bbmd/Makefile
           sed -i '/PKG_SOURCE_VERSION/d' sdk/package/bbmd/Makefile
-          echo 'PKG_SOURCE_URL:=file://$(CURDIR)/dl/' >> sdk/package/bbmd/Makefile
+          # Insert PKG_SOURCE_URL after PKG_SOURCE, before PKG_MIRROR_HASH
+          sed -i '/PKG_SOURCE:=bbmd-1.0.0.tar.gz/a PKG_SOURCE_URL:=file://\$(CURDIR)/dl/' sdk/package/bbmd/Makefile
 
       - name: Update feeds
         run: |
@@ -73,6 +81,7 @@ jobs:
       - name: Build package
         run: |
           cd sdk
+          make defconfig
           make package/bbmd-${{ inputs.variant }}/compile V=s 2>&1
 
       - name: Find artifacts
