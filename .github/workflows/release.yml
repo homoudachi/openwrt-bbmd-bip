@@ -32,7 +32,7 @@ jobs:
       - name: Download OpenWrt SDK
         run: |
           BASE="https://downloads.openwrt.org/releases/${{ inputs.openwrt_version }}/targets/${{ inputs.target }}"
-          SDK_FILE=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-[^"]+' | grep 'Linux-x86_64\.tar\.xz"' | sed 's/"$//' | head -1)
+          SDK_FILE=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-[^<>\s]+\.tar\.(xz|zst)' | head -1)
           if [ -z "$SDK_FILE" ]; then
             echo "Failed to find SDK for ${{ inputs.target }} at $BASE"
             curl -sL "$BASE/" | head -50
@@ -41,7 +41,11 @@ jobs:
           echo "Downloading: $BASE/$SDK_FILE"
           wget -nv "$BASE/$SDK_FILE"
           mkdir -p sdk
-          tar xf "$SDK_FILE" --strip-components=1 -C sdk
+          if echo "$SDK_FILE" | grep -q '\.zst$'; then
+            tar --zstd -xf "$SDK_FILE" --strip-components=1 -C sdk
+          else
+            tar xf "$SDK_FILE" --strip-components=1 -C sdk
+          fi
 
       - name: Prepare package
         run: |
