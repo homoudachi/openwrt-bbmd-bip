@@ -69,8 +69,10 @@ jobs:
           sed -i '/PKG_SOURCE_URL:=https:\/\/github.com/d' sdk/package/bbmd/Makefile
           sed -i '/PKG_SOURCE_DATE/d' sdk/package/bbmd/Makefile
           sed -i '/PKG_SOURCE_VERSION/d' sdk/package/bbmd/Makefile
-          # Insert PKG_SOURCE_URL after PKG_SOURCE, before PKG_MIRROR_HASH
+          sed -i '/PKG_MIRROR_HASH/d' sdk/package/bbmd/Makefile
+          # Insert PKG_SOURCE_URL and PKG_MIRROR_HASH after PKG_SOURCE
           sed -i '/PKG_SOURCE:=bbmd-1.0.0.tar.gz/a PKG_SOURCE_URL:=file://\$(CURDIR)/dl/' sdk/package/bbmd/Makefile
+          sed -i '/PKG_SOURCE:=bbmd-1.0.0.tar.gz/a PKG_MIRROR_HASH:=skip' sdk/package/bbmd/Makefile
 
       - name: Update feeds
         run: |
@@ -95,6 +97,15 @@ jobs:
           echo "# CONFIG_BUSYBOX_DEFAULT_SELINUX is not set" >> .config
           echo "CONFIG_PACKAGE_bbmd-${{ inputs.variant }}=y" >> .config
           TERM=dumb make defconfig V=s 2>&1
+          # Debug: verify package setup
+          echo "=== Makefile exists ==="
+          ls -la package/bbmd/Makefile
+          echo "=== Makefile first 30 lines ==="
+          head -30 package/bbmd/Makefile
+          echo "=== dl/ contents ==="
+          ls -la dl/
+          echo "=== available targets ==="
+          TERM=dumb make -n package/bbmd-${{ inputs.variant }}/compile 2>&1 | head -5
           TERM=dumb make package/bbmd-${{ inputs.variant }}/compile V=s 2>&1
 
       - name: Find artifacts
