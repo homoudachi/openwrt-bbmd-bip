@@ -81,8 +81,13 @@ jobs:
       - name: Build package
         run: |
           cd sdk
+          # Disable SELinux to break SDK recursive dependency (busybox-selinux <-> base-files)
+          sed -i '/CONFIG_BUSYBOX_SELINUX/d' .config
+          sed -i '/CONFIG_BUSYBOX_DEFAULT_SELINUX/d' .config
+          echo "# CONFIG_BUSYBOX_SELINUX is not set" >> .config
+          echo "# CONFIG_BUSYBOX_DEFAULT_SELINUX is not set" >> .config
           echo "CONFIG_PACKAGE_bbmd-${{ inputs.variant }}=y" >> .config
-          TERM=dumb make defconfig V=s 2>&1 || echo "defconfig completed with warnings (non-fatal)"
+          TERM=dumb make defconfig V=s 2>&1
           TERM=dumb make package/bbmd-${{ inputs.variant }}/compile V=s 2>&1
 
       - name: Find artifacts
