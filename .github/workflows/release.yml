@@ -100,13 +100,12 @@ jobs:
           # Debug: verify package setup
           echo "=== Makefile exists ==="
           ls -la package/bbmd/Makefile
-          echo "=== Makefile first 30 lines ==="
-          head -30 package/bbmd/Makefile
+          echo "=== Makefile first 5 lines ==="
+          head -5 package/bbmd/Makefile
           echo "=== dl/ contents ==="
           ls -la dl/
-          echo "=== available targets ==="
-          TERM=dumb make -n package/bbmd-${{ inputs.variant }}/compile 2>&1 | head -5
-          TERM=dumb make package/bbmd-${{ inputs.variant }}/compile V=s 2>&1
+          echo "=== Build target: package/bbmd/compile ==="
+          TERM=dumb make package/bbmd/compile V=s 2>&1
 
       - name: Find artifacts
         run: |
