@@ -86,6 +86,8 @@ jobs:
       - name: Build package
         run: |
           cd sdk
+          # Generate initial .config from SDK defaults
+          TERM=dumb make defconfig V=s 2>&1
           # Disable SELinux to break SDK recursive dependency (busybox-selinux <-> base-files)
           sed -i '/CONFIG_BUSYBOX_SELINUX/d' .config
           sed -i '/CONFIG_BUSYBOX_DEFAULT_SELINUX/d' .config
