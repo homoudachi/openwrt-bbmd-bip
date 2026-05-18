@@ -75,8 +75,13 @@ jobs:
       - name: Update feeds
         run: |
           cd sdk
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          # Only install required feed packages (avoid broken deps from telephony/video feeds)
+          ./scripts/feeds update packages
+          if [ "${{ inputs.variant }}" = "mbedtls" ]; then
+            ./scripts/feeds install libwebsockets-mbedtls
+          else
+            ./scripts/feeds install libwebsockets-full
+          fi
 
       - name: Build package
         run: |
